@@ -31,6 +31,7 @@
 #include <Arduino.h>
 
 #define MAIN_SKETCH
+#include "IRHandler.hpp"
 #include "WriteInstinct/OpenCat.h"
 
 #include <I2Cdev.h>
@@ -48,20 +49,29 @@
 //#endif
 #define HISTORY 2
 int8_t lag = 0;
-float
-    ypr[3]; // [yaw, pitch, roll]   yaw/pitch/roll container and gravity vector
+
+// [yaw, pitch, roll]   yaw/pitch/roll container and gravity vector
+float ypr[3];
 float yprLag[HISTORY][3];
 
 MPU6050 mpu;
 #define OUTPUT_READABLE_YAWPITCHROLL
+
 // MPU control/status vars
 // bool dmpReady = false;  // set true if DMP init was successful
 uint8_t mpuIntStatus; // holds actual interrupt status byte from MPU
-uint8_t devStatus; // return status after each device operation (0 = success, !0
-                   // = error)
-uint16_t packetSize; // expected DMP packet size (default is 42 bytes)
-uint16_t fifoCount;  // count of all bytes currently in FIFO
-uint8_t fifoBuffer[PACKET_SIZE]; // FIFO storage buffer
+
+// return status after each device operation (0 = success, !0 = error)
+int8_t devStatus;
+
+// expected DMP packet size (default is 42 bytes)
+uint16_t packetSize;
+
+// count of all bytes currently in FIFO
+uint16_t fifoCount;
+
+// FIFO storage buffer
+uint8_t fifoBuffer[PACKET_SIZE];
 
 // orientation/motion vars
 Quaternion q;        // [w, x, y, z]         quaternion container
@@ -71,94 +81,18 @@ VectorFloat gravity; // [x, y, z]            gravity vector
 // ===               INTERRUPT DETECTION ROUTINE                ===
 // ================================================================
 
-volatile bool mpuInterrupt =
-    false; // indicates whether MPU interrupt pin has gone high
+// indicates whether MPU interrupt pin has gone high
+volatile bool mpuInterrupt = false;
 void dmpDataReady() { mpuInterrupt = true; }
 
 // https://brainy-bits.com/blogs/tutorials/ir-remote-arduino
 #include <IRremote.h>
-/*-----( Declare objects )-----*/
+
 IRrecv irrecv(IR_RECEIVER); // create instance of 'irrecv'
-decode_results results;     // create instance of 'decode_results'
+IRHandler irh;
 
-String translateIR() // takes action based on IR code received
-// describing Remote IR codes.
-{
-  switch (results.value) {
-  // IR signal    key on IR remote           //key mapping
-  case 0xFFA25D: /*PTLF(" CH-");   */
-    return (F(K00));
-  case 0xFF629D: /*PTLF(" CH");  */
-    return (F(K01));
-  case 0xFFE21D: /*PTLF(" CH+"); */
-    return (F(K02));
-
-  case 0xFF22DD: /*PTLF(" |<<"); */
-    return (F(K10));
-  case 0xFF02FD: /*PTLF(" >>|"); */
-    return (F(K11));
-  case 0xFFC23D: /*PTLF(" >||"); */
-    return (F(K12));
-
-  case 0xFFE01F: /*PTLF(" -");   */
-    return (F(K20));
-  case 0xFFA857: /*PTLF(" +");  */
-    return (F(K21));
-  case 0xFF906F: /*PTLF(" EQ"); */
-    return (F(K22));
-
-  case 0xFF6897: /*PTLF(" 0");  */
-    return (F(K30));
-  case 0xFF9867: /*PTLF(" 100+"); */
-    return (F(K31));
-  case 0xFFB04F: /*PTLF(" 200+"); */
-    return (F(K32));
-
-  case 0xFF30CF: /*PTLF(" 1");  */
-    return (F(K40));
-  case 0xFF18E7: /*PTLF(" 2");  */
-    return (F(K41));
-  case 0xFF7A85: /*PTLF(" 3");  */
-    return (F(K42));
-
-  case 0xFF10EF: /*PTLF(" 4");  */
-    return (F(K50));
-  case 0xFF38C7: /*PTLF(" 5");  */
-    return (F(K51));
-  case 0xFF5AA5: /*PTLF(" 6");  */
-    return (F(K52));
-
-  case 0xFF42BD: /*PTLF(" 7");  */
-    return (F(K60));
-  case 0xFF4AB5: /*PTLF(" 8");  */
-    return (F(K61));
-  case 0xFF52AD: /*PTLF(" 9");  */
-    return (F(K62));
-
-  case 0xFFFFFFFF:
-    return (""); // Serial.println(" REPEAT");
-
-  default: {
-    // Serial.println(results.value, HEX);
-  }
-    return (""); // Serial.println("null");
-  }              // End Case
-  // delay(100); // Do not get immediate repeat //no need because the main loop
-  // is slow
-
-  // The control could be organized in another way, such as:
-  // forward/backward to change the gaits corresponding to different speeds.
-  // left/right key for turning left and right
-  // number keys for different postures or behaviors
-}
-
-char token;
-char lastToken;
-#define CMD_LEN 10
-char *lastCmd = new char[CMD_LEN];
-char *newCmd = new char[CMD_LEN];
-byte newCmdIdx = 0;
 byte hold = 0;
+
 int8_t offsetLR = 0;
 bool checkGyro = true;
 int8_t skipGyro = 2;
@@ -267,16 +201,18 @@ void checkBodyMotion() {
         getYPR();
         delay(10);
       }
-    if (fabs(ypr[1]) > LARGE_PITCH || fabs(ypr[2]) > LARGE_ROLL) { // check
-                                                                   // again
+
+    // check again
+    if (fabs(ypr[1]) > LARGE_PITCH || fabs(ypr[2]) > LARGE_ROLL) {
+
       if (!hold) {
-        token = T_SKILL;
+        irh.token = T_SKILL;
         if (fabs(ypr[2]) > LARGE_ROLL) {
-          strcpy(newCmd, "rc");
-          newCmdIdx = 4;
+          irh.setNewCmd("rc");
+          irh.newCmdIdx = 4;
         } else {
-          strcpy(newCmd, ypr[1] < LARGE_PITCH ? "lifted" : "dropped");
-          newCmdIdx = 1;
+          irh.setNewCmd(ypr[1] < LARGE_PITCH ? "lifted" : "dropped");
+          irh.newCmdIdx = 1;
         }
       }
       hold = 10;
@@ -286,17 +222,17 @@ void checkBodyMotion() {
   // recover
   else if (hold) {
     if (hold == 1) {
-      token = T_SKILL;
-      strcpy(newCmd, "balance");
-      newCmdIdx = 1;
+      irh.token = T_SKILL;
+      irh.setNewCmd("balance");
+      irh.newCmdIdx = 1;
     }
     hold--;
     if (!hold) {
       char temp[CMD_LEN];
-      strcpy(temp, newCmd);
-      strcpy(newCmd, lastCmd);
-      strcpy(lastCmd, temp);
-      newCmdIdx = 1;
+      strcpy(temp, irh.newCmd);
+      irh.setNewCmd(irh.lastCmd);
+      irh.setLastCmd(temp);
+      irh.newCmdIdx = 1;
       meow();
     }
   }
@@ -309,8 +245,6 @@ void checkBodyMotion() {
         sign(ypr[2 - i]) * max(fabs(RollPitchDeviation[i]) - levelTolerance[i],
                                0); // filter out small angles
   }
-
-  // PTL(jointIdx);
 }
 
 void setup() {
@@ -422,8 +356,8 @@ void setup() {
     delay(200);
 
     // meow();
-    strcpy(lastCmd, "rest");
-    motion.loadBySkillName(lastCmd);
+    irh.setLastCmd("rest");
+    motion.loadBySkillName(irh.lastCmd);
     for (int8_t i = DOF - 1; i >= 0; i--) {
       pulsePerDegree[i] = float(PWM_RANGE) / servoAngleRange(i);
       servoCalibs[i] = servoCalib(i);
@@ -438,7 +372,7 @@ void setup() {
     randomSeed(analogRead(
         0)); // use the fluctuation of voltage caused by servos as entropy pool
     shutServos();
-    token = T_REST;
+    irh.token = T_REST;
   }
   beep(30);
 
@@ -463,27 +397,27 @@ void loop() {
     PTL(voltage); // relative voltage
     meow();
   } else {
-    newCmd[0] = '\0';
-    newCmdIdx = 0;
+    irh.newCmd[0] = '\0';
+    irh.newCmdIdx = 0;
 
     // input block
     // else if (t == 0) {
-    if (irrecv.decode(&results)) {
-      String IRsig = irParser(translateIR());
+    if (irrecv.decode(&irh.results)) {
+      String IRsig = irParser(irh.translateIR());
       // PTL(IRsig);
       if (IRsig != "") {
-        strcpy(newCmd, IRsig.c_str());
-        if (strlen(newCmd) == 1)
-          token = newCmd[0];
+        irh.setNewCmd(IRsig.c_str());
+        if (strlen(irh.newCmd) == 1)
+          irh.token = irh.newCmd[0];
         else
-          token = T_SKILL;
-        newCmdIdx = 2;
+          irh.token = T_SKILL;
+        irh.newCmdIdx = 2;
       }
       irrecv.resume(); // receive the next value
     }
     if (Serial.available() > 0) {
-      token = Serial.read();
-      newCmdIdx = 3;
+      irh.token = Serial.read();
+      irh.newCmdIdx = 3;
     }
 
     // MPU block
@@ -506,18 +440,18 @@ void loop() {
     //...
     //...
     // for obstacle avoidance and auto recovery
-    if (newCmdIdx) {
-      PTL(token);
-      beep(newCmdIdx * 4);
+    if (irh.newCmdIdx) {
+      PTL(irh.token);
+      beep(irh.newCmdIdx * 4);
       // this block handles argumentless tokens
-      switch (token) {
+      switch (irh.token) {
       //        case T_HELP: {
       //            PTLF("* info *");// print the help document. not implemented
       //            on NyBoard Vo due to limited space break;
       //          }
       case T_REST: {
-        strcpy(lastCmd, "rest");
-        skillByName(lastCmd);
+        irh.setLastCmd("rest");
+        skillByName(irh.lastCmd);
         break;
       }
       case T_GYRO: {
@@ -525,13 +459,13 @@ void loop() {
           checkBodyMotion();
         //            countDown = COUNT_DOWN;
         checkGyro = !checkGyro;
-        token = T_SKILL;
+        irh.token = T_SKILL;
         break;
       }
       case T_PAUSE: {
         tStep = !tStep;
         if (tStep)
-          token = T_SKILL;
+          irh.token = T_SKILL;
         else
           shutServos();
         break;
@@ -568,11 +502,11 @@ void loop() {
           for (int i = 0; i < DOF; i += 1) {
             targetFrame[i] = currentAng[i];
           }
-          if (token == T_INDEXED) {
+          if (irh.token == T_INDEXED) {
             for (int i = 0; i < numArg; i += 2) {
               targetFrame[list[i]] = list[i + 1];
             }
-          } else if (token == T_LISTED) {
+          } else if (irh.token == T_LISTED) {
             for (int i = 0; i < DOF; i += 1) {
               targetFrame[i] = list[i];
             }
@@ -619,16 +553,16 @@ void loop() {
             pch = strtok(NULL, " ,\t");
             inLen++;
           }
-          PT(token);
+          PT(irh.token);
           printList(target, 2);
           float angleInterval = 0.2;
           int angleStep = 0;
-          if (token == T_CALIBRATE) {
+          if (irh.token == T_CALIBRATE) {
             // PTLF("calibrating [ targetIdx, angle ]: ");
 
-            if (strcmp(lastCmd,
-                       "c")) { // first time entering the calibration function
-              strcpy(lastCmd, "c");
+            // first time entering the calibration function
+            if (irh.isLastCmd("c")) {
+              irh.setLastCmd("c");
               motion.loadBySkillName("calib");
               transform(motion.dutyAngles);
               checkGyro = false;
@@ -645,7 +579,7 @@ void loop() {
                            pulsePerDegree[target[0]] *
                            rotationDirection(target[0]);
             pwm.setPWM(pin(target[0]), 0, duty);
-          } else if (token == T_MOVE) {
+          } else if (irh.token == T_MOVE) {
             // SPF("moving [ targetIdx, angle ]: ");
             angleStep =
                 floor((target[1] - currentAng[target[0]]) / angleInterval);
@@ -659,9 +593,9 @@ void loop() {
               pwm.setPWM(pin(target[0]), 0, duty);
             }
             currentAng[target[0]] = motion.dutyAngles[target[0]] = target[1];
-          } else if (token == T_MEOW) {
+          } else if (irh.token == T_MEOW) {
             meow(target[0], 0, 50, 200, 1 + target[1]);
-          } else if (token == T_BEEP) {
+          } else if (irh.token == T_BEEP) {
             beep(target[0], (byte)target[1]);
           }
 
@@ -685,36 +619,38 @@ void loop() {
       default:
         if (Serial.available() > 0) {
           String inBuffer = Serial.readStringUntil('\n');
-          strcpy(newCmd, inBuffer.c_str());
+          irh.setNewCmd(inBuffer.c_str());
         }
       }
       while (Serial.available() && Serial.read())
         ; // flush the remaining serial buffer in case the commands are parsed
           // incorrectly
       // check above
-      if (strcmp(newCmd, "") && strcmp(newCmd, lastCmd)) {
+      if (irh.isNewCmd("") && irh.isNewCmd(irh.lastCmd)) {
         //      PT("compare lastCmd ");
         //      PT(lastCmd);
         //      PT(" with newCmd ");
         //      PT(token);
         //      PT(newCmd);
         //      PT("\n");
-        if (token == T_UNDEFINED) {
+        if (irh.token == T_UNDEFINED) {
         }; // some words for undefined behaviors
 
-        if (token == T_SKILL) { // validating key
+        if (irh.token == T_SKILL) { // validating key
 
-          motion.loadBySkillName(newCmd);
+          motion.loadBySkillName(irh.newCmd);
 
-          char lr = newCmd[strlen(newCmd) - 1];
+          char lr = irh.newCmd[strlen(irh.newCmd) - 1];
           offsetLR = (lr == 'L' ? 15 : (lr == 'R' ? -15 : 0));
 
           // motion.info();
           timer = 0;
-          if (strcmp(newCmd, "balance") && strcmp(newCmd, "lifted") &&
-              strcmp(newCmd, "dropped"))
-            strcpy(lastCmd, newCmd);
-            // Xconfig = strcmp(newCmd, "wkX") ? false : true;
+          if (irh.isNewCmd("balance") && irh.isNewCmd("lifted") &&
+              irh.isNewCmd("dropped")) {
+
+            irh.setLastCmd(irh.newCmd);
+          }
+          // Xconfig = strcmp(newCmd, "wkX") ? false : true;
 
 #ifdef POSTURE_WALKING_FACTOR
           postureOrWalkingFactor =
@@ -789,7 +725,7 @@ void loop() {
               }
             }
             skillByName("balance", 1, 2, false);
-            strcpy(lastCmd, "balance");
+            irh.setLastCmd("balance");
             for (byte a = 0; a < DOF; a++)
               currentAdjust[a] = 0;
             hold = 0;
@@ -799,20 +735,20 @@ void loop() {
           }
           jointIdx = 3; // DOF; to skip the large adjustment caused by MPU
                         // overflow. joint 3 is not used.
-          if (!strcmp(newCmd, "rest")) {
+          if (!irh.isNewCmd("rest")) {
             shutServos();
-            token = T_REST;
+            irh.token = T_REST;
           }
         } else {
-          lastCmd[0] = token;
-          memset(lastCmd + 1, '\0', CMD_LEN - 1);
+          irh.lastCmd[0] = irh.token;
+          memset(irh.lastCmd + 1, '\0', CMD_LEN - 1);
         }
       }
     }
 
     // motion block
     {
-      if (token == T_SKILL) {
+      if (irh.token == T_SKILL) {
         if (jointIdx == DOF) {
 #ifdef SKIP
           if (updateFrame++ == SKIP) {

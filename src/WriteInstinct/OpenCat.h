@@ -157,40 +157,6 @@ void meow(int repeat = 0, int pause = 200, int startF = 50,  int endF = 200, int
 #define T_UNDEFINED 'w'
 #define T_XLEG      'x'
 
-//abbreviation //gait/posture/function names
-#define K00 "d"       //rest and shutdown all servos 
-#define K01 "F"       //forward
-#define K02 "g"       //turn off gyro feedback to boost speed
-
-#define K10 "L"       //left
-#define K11 "balance" //neutral stand up posture
-#define K12 "R"       //right
-
-#define K20 "p"       //pause motion and shut off all servos 
-#define K21 "B"       //backward
-#define K22 "c"       //calibration mode with IMU turned off
-
-#define K30 "vt"      //stepping
-#define K31 "cr"      //crawl
-#define K32 "wk"      //walk
-
-#define K40 "tr"      //trot
-#ifdef NYBBLE
-#define K41 "lu"      //look up
-#define K42 "buttUp"    //butt up
-#else //BITTLE
-#define K41 "rn"      //run
-#define K42 "ck"      //check around
-#endif
-
-#define K50 "hi"      //greeting
-#define K51 "pu"      //push up
-#define K52 "pee"     //standng with three legs
-
-#define K60 "str"     //stretch
-#define K61 "sit"     //sit
-#define K62 "zero"    //zero position
-
 
 String gait = "wk";
 char direct = 'F';
