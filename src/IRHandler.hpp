@@ -57,6 +57,11 @@ public:
     return strcmp(newCmd, "c");
   }
 
+  void resetNewCmd() {
+    newCmd[0] = '\0';
+    newCmdIdx = 0;
+  }
+
   String translateIR() {
     // takes action based on IR code received
     // describing Remote IR codes.
