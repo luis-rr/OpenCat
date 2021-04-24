@@ -755,6 +755,12 @@ void saveCalib(int8_t *var) {
   }
 }
 
+void resetCalib() {
+    for (byte i = 0; i < DOF; i++) {
+      servoCalibs[i] = servoCalib(i);
+    }
+}
+
 void calibratedPWM(byte i, float angle) {
   /*float angle = max(-SERVO_ANG_RANGE/2, min(SERVO_ANG_RANGE/2, angle));
     if (i > 3 && i < 8)

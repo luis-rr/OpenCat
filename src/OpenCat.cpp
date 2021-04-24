@@ -720,12 +720,7 @@ void normalOperation() {
         shutServos();
       break;
     }
-    //        case T_RAMP: { //if the robot is on a ramp, flip the adaption
-    //        direction
-    //            ramp = (ramp == 1) ? -1.5 : 1;
-    //            token = T_SKILL;
-    //            break;
-    //          }
+
     case T_SAVE: {
       PTLF("save offset");
       saveCalib(servoCalibs);
@@ -733,9 +728,7 @@ void normalOperation() {
     }
     case T_ABORT: {
       PTLF("aborted");
-      for (byte i = 0; i < DOF; i++) {
-        servoCalibs[i] = servoCalib(i);
-      }
+      resetCalib();
       break;
     }
 
