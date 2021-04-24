@@ -29,6 +29,7 @@
 */
 
 #include <Wire.h>
+#include <Arduino.h>
 #define DEVICE_ADDRESS 0x54    //Address of eeprom chip
 #define WIRE_BUFFER 30 //Arduino wire allows 32 byte buffer, with 2 byte for address.
 #define WIRE_LIMIT 16 //That leaves 30 bytes for data. use 16 to balance each writes

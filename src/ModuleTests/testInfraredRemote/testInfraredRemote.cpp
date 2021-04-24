@@ -27,6 +27,8 @@
 
 #include "IRremote.h"
 
+void translateIR();
+
 int receiver = 4; // Signal Pin of IR receiver to Arduino Pin 4
 
 /*-----( Declare objects )-----*/

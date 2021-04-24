@@ -34,6 +34,7 @@
   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
   SOFTWARE.
 */
+#include <Arduino.h>
 
 #define BUZZER 5 // the PWM pin the ACTIVE buzzer is attached to
 int loopCounter = 0;
