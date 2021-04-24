@@ -32,6 +32,9 @@
 #define INSTINCT_SKETCH
 //#define AUTORUN
 
+void meansensors();
+void calibration();
+
 void saveMPUcalib(int * var) {
   for (byte i = 0; i < 6; i++)
     EEPROM.update(MPUCALIB + i, var[i]);

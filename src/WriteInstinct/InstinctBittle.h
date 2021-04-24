@@ -1,6 +1,12 @@
+#ifndef INSTINCTBITTLE_HEADER
+#define INSTINCTBITTLE_HEADER
+
 #define BITTLE
 #define NUM_SKILLS 33
 #define I2C_EEPROM
+
+#include <Arduino.h>
+
 
 const char bdF[] PROGMEM = {
   15, 0, 0, 1,
@@ -706,3 +712,6 @@ const char* progmemPointer[] = {zero, bf};
 //the total byte of instincts is 5489
 //the maximal array size is 461 bytes of wkF.
 //Make sure to leave enough memory for SRAM to work properly. Any single skill should be smaller than 400 bytes for safety.
+
+
+#endif // INSTINCTBITTLE_HEADER

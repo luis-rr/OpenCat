@@ -1,3 +1,6 @@
+#ifndef INSTINCTNYBBLE_HEADER
+#define INSTINCTNYBBLE_HEADER
+
 #define NYBBLE
 #define NUM_SKILLS 34
 #define I2C_EEPROM
@@ -642,3 +645,6 @@ const char rc[] PROGMEM = {
 //the total byte of instincts is 4712
 //the maximal array size is 365 bytes of bk. 
 //Make sure to leave enough memory for SRAM to work properly. Any single skill should be smaller than 400 bytes for safety.
+
+
+#endif INSTINCTNYBBLE_HEADER

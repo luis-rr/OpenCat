@@ -66,6 +66,8 @@
   SOFTWARE.
 
 */
+#ifndef OPENCAT_HEADER
+#define OPENCAT_HEADER
 
 //postures and movements trained by RongzhongLi
 #include "InstinctBittle.h" //activate the correct header file according to your model
@@ -865,3 +867,6 @@ char getUserInput() {//limited to one character
   while (!Serial.available());
   return Serial.read();
 }
+
+
+#endif  // OPENCAT_HEADER
